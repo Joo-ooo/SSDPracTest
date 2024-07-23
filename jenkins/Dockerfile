@@ -1,19 +1,27 @@
+# Jenkins Dockerfile
 FROM jenkins/jenkins:lts
+
 USER root
 
-ENV JENKINS_USER admin
-ENV JENKINS_PASS Raymond
+# Install Python, Docker CLI, and Git
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip python3-venv docker.io git && \
+    ln -s /usr/bin/python3 /usr/bin/python && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install docker-compose
+RUN curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
+    chmod +x /usr/local/bin/docker-compose
+
+# Add Jenkins user to Docker group (without creating it)
+RUN usermod -aG docker jenkins
 
 
-#id_rsa.pub file will be saved at /root/.ssh/
-RUN ssh-keygen -f /root/.ssh/id_rsa -t rsa -N ''  
+# Configure Git
+ARG GIT_USER_NAME
+ARG GIT_USER_EMAIL
 
+RUN git config --global user.name "${GIT_USER_NAME}" && \
+    git config --global user.email "${GIT_USER_EMAIL}"
 
-# allows to skip Jenkins setup wizard
-ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false
-
-# Jenkins runs all grovy files from init.groovy.d dir
-# use this for creating default admin user
-COPY default-user.groovy /usr/share/jenkins/ref/init.groovy.d/
-
-VOLUME /var/jenkins_home 
+USER jenkins
